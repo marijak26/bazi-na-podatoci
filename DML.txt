@@ -1,0 +1,276 @@
+1. SELECT DISTINCT l.id
+FROM Lice l
+JOIN Test t ON l.id = t.id
+JOIN Vakcinacija_datum vd ON l.id = vd.id_lice AND t.datum < vd.datum
+WHERE t.rezultat = 'pozitiven'
+GROUP BY l.id
+HAVING COUNT(vd.shifra_vakcina) > 0
+ORDER BY CAST(L.id AS INTEGER) ASC
+
+2. SELECT m.ime, m.prezime
+FROM Muzicar m
+JOIN Muzicar_instrument mi ON m.id = mi.id_muzicar
+JOIN Muzicar_bend mb ON m.id = mb.id_muzicar
+JOIN Bend b ON mb.id_bend = b.id
+JOIN Koncert_muzicar_bend kmb ON mb.id_muzicar = kmb.id_muzicar AND mb.id_bend = kmb.id_bend
+JOIN Koncert k ON kmb.id_koncert = k.id
+WHERE k.datum > mb.datum_napustanje AND mi.instrument = 'gitara'
+ORDER BY m.ime ASC
+
+3. SELECT DISTINCT k.ime, k.prezime
+FROM Korisnik k
+JOIN Poseta p1 ON k.kor_ime = p1.kor_ime
+JOIN Objekt o1 ON p1.id_mesto = o1.id_mesto
+JOIN Grad g1 ON o1.id_grad = g1.id_mesto
+JOIN Sosedi s ON g1.id_mesto = s.grad1
+JOIN Grad g2 ON s.grad2 = g2.id_mesto
+JOIN Objekt o2 ON g2.id_mesto = o2.id_grad
+JOIN Poseta p2 ON o2.id_mesto = p2.id_mesto
+WHERE p1.datum = p2.datum AND p1.kor_ime = p2.kor_ime
+
+4. SELECT DISTINCT k.ime, k.prezime
+FROM Korisnik k
+JOIN Poseta p1 ON k.kor_ime = p1.kor_ime
+JOIN Objekt o1 ON p1.id_mesto = o1.id_mesto
+JOIN Grad g1 ON o1.id_grad = g1.id_mesto
+JOIN Sosedi s ON g1.id_mesto = s.grad1
+JOIN Grad g2 ON s.grad2 = g2.id_mesto
+JOIN Objekt o2 ON g2.id_mesto = o2.id_grad
+JOIN Poseta p2 ON o2.id_mesto = p2.id_mesto
+WHERE p1.kor_ime = p2.kor_ime AND s.rastojanie < 300
+
+5. SELECT DISTINCT k.ime, k.prezime
+FROM Premium_korisnik pk
+JOIN Korisnik k ON pk.k_ime = k.k_ime
+JOIN Preporaka p ON pk.k_ime = p.k_ime_od
+JOIN Video_zapis vz ON p.naslov = vz.naslov
+WHERE vz.vremetraenje > 120 AND p.ocena >= 4
+ORDER BY k.datum_reg ASC
+
+6. SELECT lz.k_ime, lz.naslov
+FROM Lista_zelbi lz
+JOIN Preporaka p ON lz.k_ime = p.k_ime_na AND lz.naslov = p.naslov
+JOIN Premium_korisnik pk ON lz.k_ime = pk.k_ime
+WHERE p.ocena > 3 AND p.datum >= '2021-01-01' AND p.datum <= '2021-12-31'
+ORDER BY pk.k_ime
+
+7. WITH pozitivni AS (
+    SELECT DISTINCT t.id
+    FROM Test t
+    WHERE t.datum LIKE '2021-08%' AND t.rezultat = 'pozitiven'
+),
+celosno_vakcinirani AS (
+    SELECT DISTINCT vd.id_lice, COUNT(DISTINCT vd.shifra_vakcina) AS dozi
+    FROM Vakcinacija_datum vd
+    JOIN pozitivni p ON vd.id_lice = p.id
+    GROUP BY vd.id_lice
+    HAVING COUNT(DISTINCT vd.shifra_vakcina) = 2
+)
+SELECT ((COUNT(p.id) - COUNT(cv.id_lice)) / (COUNT (p.id) * 1.0)) * 100.0 AS procent
+FROM pozitivni p
+LEFT JOIN celosno_vakcinirani cv ON p.id = cv.id_lice
+
+8. SELECT b1.ime as B1,b2.ime as B2
+FROM Bend b1
+JOIN Bend b2 ON b1.godina_osnovanje = b2.godina_osnovanje AND b1.ime > b2.ime
+ORDER BY B1 ASC, B2 DESC
+
+9. SELECT m.ime
+FROM Grad g
+JOIN Mesto m ON g.id_mesto = m.id
+JOIN Objekt o ON g.id_mesto = o.id_grad
+JOIN Poseta p ON o.id_mesto = p.id_mesto
+GROUP BY m.ime
+ORDER BY COUNT(p.datum) DESC
+LIMIT 1
+
+10. SELECT m.ime
+FROM Objekt o
+JOIN Grad g ON o.id_grad = g.id_mesto
+JOIN Mesto m ON o.id_mesto = m.id
+WHERE o.id_grad IN (SELECT m.id
+                    FROM Mesto m
+                    JOIN Grad g ON m.id = g.id_mesto
+                    JOIN Poseta p ON g.id_mesto = p.id_mesto
+                    GROUP BY m.ime
+                    LIMIT 1)
+ORDER BY m.ime DESC
+
+11. WITH preporaki AS (
+    SELECT p.k_ime_od, COUNT(*) AS broj_preporaki
+    FROM Preporaka p
+    GROUP BY p.k_ime_od
+),
+max_preporaki AS (
+    SELECT MAX(broj_preporaki) AS dadeni_preporaki
+    FROM preporaki
+),
+iminja AS (
+    SELECT p.k_ime_od AS k_ime
+    FROM preporaki p
+    JOIN max_preporaki mp ON p.broj_preporaki = mp.dadeni_preporaki
+)
+SELECT p.k_ime_na AS k_ime, COUNT(*) AS dobieni_preporaki
+FROM Preporaka p
+JOIN iminja i ON p.k_ime_na = i.k_ime
+GROUP BY p.k_ime_na
+
+12. WITH filmovi AS (
+    SELECT p.k_ime_od AS k_ime, p.naslov
+    FROM Preporaka p
+),
+counts AS (
+    SELECT f.k_ime, f.naslov, COUNT(*) AS broj
+    FROM filmovi f
+    GROUP BY f.k_ime, f.naslov
+),
+max_counts AS (
+    SELECT k_ime, MAX(broj) AS broj
+    FROM counts
+    GROUP BY k_ime
+)
+SELECT c.k_ime, c.naslov, c.broj
+FROM counts c
+JOIN max_counts mc ON c.k_ime = mc.k_ime AND c.broj = mc.broj
+
+13. WITH odrzuvanja AS (
+    SELECT f.id, f.ime, n.cena, n.kapacitet, COUNT(*) AS broj_odrzuvanja
+    FROM Festival f
+    JOIN Nastan n ON f.id = n.id
+    JOIN Festival_odrzuvanje fo ON f.id = fo.id
+    GROUP BY f.id, f.ime, n.cena, n.kapacitet
+    ORDER BY n.kapacitet DESC
+)
+SELECT o.ime, o.cena, o.kapacitet, o.broj_odrzuvanja, COUNT(DISTINCT fb.id_bend) AS broj_bendovi
+FROM odrzuvanja o
+JOIN Festival_bend fb ON o.id = fb.id_festival
+GROUP BY o.ime, o.cena, o.kapacitet, o.broj_odrzuvanja
+ORDER BY o.kapacitet DESC
+
+14. WITH oceni AS (
+    SELECT DISTINCT pr.ime, p.naslov, AVG(p.ocena) AS po_profil
+    FROM Lista_zelbi lz
+    JOIN Preporaka p ON lz.naslov = p.naslov
+    JOIN Profil pr ON lz.ime = pr.ime
+    GROUP BY pr.ime, p.naslov
+)
+SELECT o.ime, AVG(o.po_profil) AS po_profil
+FROM oceni o
+GROUP BY o.ime
+
+15. SELECT v.ime, v.prezime
+FROM Vraboten v
+JOIN Shalterski_rabotnik sh ON v.ID = sh.ID
+JOIN Transakcija_shalter ts ON sh.ID = ts.ID_v
+JOIN Smetka s ON ts.broj = s.broj
+WHERE s.valuta = 'EUR' AND ts.suma > 1000 AND ts.tip = 'isplata'
+ORDER BY v.ime
+
+16. SELECT k.ime, k.prezime
+FROM Klient k
+JOIN Smetka s ON k.MBR_k = s.MBR_k
+JOIN Transakcija_bankomat tb ON s.MBR_k = tb.MBR_k_s AND s.broj = tb.broj
+WHERE s.valuta = 'USD' AND tb.suma > 400
+ORDER BY k.ime
+
+17. SELECT s.*
+FROM Smetka s
+JOIN Transakcija_shalter ts ON s.MBR_k = ts.MBR_k_s AND s.broj = ts.broj
+JOIN Transakcija_bankomat tb ON s.MBR_k = tb.MBR_k_s AND s.broj = tb.broj
+WHERE s.valuta = 'MKD' AND ts.datum LIKE '2021%' AND tb.datum LIKE '2021%' AND ts.tip = 'isplata'
+ORDER BY s.broj
+
+18. SELECT k.*
+FROM Klient k
+JOIN Smetka s ON k.MBR_k = s.MBR_k
+JOIN Transakcija_bankomat tb ON s.broj = tb.broj AND s.MBR_k = tb.MBR_k_s
+WHERE s.valuta = 'EUR' 
+    AND NOT EXISTS (
+        SELECT *
+        FROM Transakcija_shalter ts
+        WHERE s.broj = ts.broj AND s.MBR_k = ts.MBR_k_s
+    )
+ORDER BY k.ime
+
+19. WITH transakcii AS (
+    SELECT DISTINCT ts.ID_v AS vraboten, ts.datum, COUNT(ts.ID) AS broj_transakcii
+    FROM Transakcija_shalter ts
+    GROUP BY ts.ID_v, ts.datum
+),
+max_transakcii AS (
+    SELECT t.vraboten, MAX(t.broj_transakcii) AS broj_transakcii
+    FROM transakcii t
+    GROUP BY t.vraboten
+),
+najmnogu_transakcii AS (
+    SELECT t.vraboten, t.datum, t.broj_transakcii
+    FROM transakcii t 
+    JOIN max_transakcii mt ON t.vraboten = mt.vraboten AND t.broj_transakcii = mt.broj_transakcii
+)
+SELECT sh.ID AS vraboten, nt.datum, nt.broj_transakcii
+FROM Shalterski_rabotnik sh
+JOIN najmnogu_transakcii nt ON sh.ID = nt.vraboten 
+
+#NE RABOTI!!!
+
+20. SELECT s.MBR_k, s.broj, AVG(tb.suma) AS prosechna_isplata_bankomat, AVG(ts.suma) AS prosechna_isplata_shalter
+FROM Smetka s
+JOIN Transakcija_shalter ts ON s.MBR_K = ts.MBR_k_s AND s.broj = ts.broj
+JOIN Transakcija_bankomat tb ON s.MBR_K = tb.MBR_k_s AND s.broj = tb.broj
+WHERE ts.tip = 'isplata' AND s.valuta IN ('EUR','USD') AND ts.datum LIKE '2021%' AND tb.datum LIKE '2021%'
+GROUP BY s.MBR_k, s.broj
+ORDER BY s.broj
+
+21. SELECT DISTINCT k.ime, k.prezime
+FROM Korisnik k
+JOIN Premium_korisnik pk ON k.k_ime = pk.k_ime
+JOIN Preporaka p ON pk.k_ime = p.k_ime_od
+JOIN Video_zapis vz ON p.naslov = vz.naslov
+WHERE vz.vremetraenje > 120 AND p.ocena >= 4
+ORDER BY k.datum_reg
+
+22. WITH max_preporaki AS (
+    SELECT p.k_ime_od AS k_ime, COUNT(p.k_ime_od) AS dadeni_preporaki
+    FROM Preporaka p
+    GROUP BY p.k_ime_od
+    ORDER BY dadeni_preporaki DESC
+    LIMIT 1
+)
+SELECT mp.k_ime, COUNT(p.k_ime_na) AS dobieni_preporaki
+FROM max_preporaki mp
+JOIN Preporaka p ON mp.k_ime = p.k_ime_na
+
+23. WITH oceni AS (
+    SELECT DISTINCT pr.ime, p.naslov, AVG(p.ocena) AS po_profil
+    FROM Lista_zelbi lz
+    JOIN Preporaka p ON lz.naslov = p.naslov
+    JOIN Profil pr ON lz.ime = pr.ime
+    GROUP BY pr.ime, p.naslov
+)
+SELECT o.ime, AVG(o.po_profil) AS po_profil
+FROM oceni o
+GROUP BY o.ime
+
+24. SELECT vzz.zanr, COUNT(p.ID) as broj_zanrovi
+FROM Video_zapis_zanr vzz
+JOIN Preporaka p ON vzz.naslov = p.naslov
+WHERE p.komentar LIKE '%interesting%'
+GROUP BY vzz.zanr
+ORDER BY broj_zanrovi
+
+25. SELECT vz.naslov, vz.vremetraenje, COUNT(DISTINCT p.ID) AS broj_preporaki
+FROM Video_zapis vz
+JOIN Lista_zelbi lz ON vz.naslov = lz.naslov
+JOIN Profil pr ON lz.k_ime = pr.k_ime
+LEFT JOIN Preporaka p ON vz.naslov = p.naslov
+GROUP BY vz.naslov, vz.vremetraenje
+HAVING COUNT(DISTINCT pr.k_ime) >= 2
+
+26. SELECT DISTINCT p.k_ime_od
+FROM Preporaka p
+JOIN Profil pr ON p.k_ime_od = pr.k_ime
+WHERE NOT EXISTS (
+    SELECT *
+    FROM Lista_zelbi lz
+    WHERE pr.k_ime = lz.k_ime AND p.naslov = lz.naslov
+)
