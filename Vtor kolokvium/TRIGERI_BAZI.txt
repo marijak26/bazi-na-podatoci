@@ -1,0 +1,85 @@
+1. CREATE TRIGGER trg_br_bendovi
+BEFORE INSERT ON Muzicar_bend
+FOR EACH ROW
+BEGIN
+    UPDATE Muzicar
+    SET br_bendovi = br_bendovi + 1
+    WHERE Muzicar.id = NEW.id_muzicar;
+END;
+
+2. CREATE TRIGGER updt_prosecna_ocena
+AFTER INSERT ON Preporaka
+FOR EACH ROW
+BEGIN
+    UPDATE Video_zapis
+    SET prosechna_ocena = (SELECT AVG(ocena) FROM Preporaka WHERE naslov = NEW.naslov)
+    WHERE naslov = NEW.naslov;
+END;
+
+3. CREATE TRIGGER updt_imuniziran_insert
+AFTER INSERT ON Vakcinacija_datum
+FOR EACH ROW
+BEGIN 
+    UPDATE Lice
+    SET celosno_imuniziran = 1
+    WHERE id = NEW.id_lice AND (SELECT COUNT(shifra_vakcina) FROM Vakcinacija_datum WHERE id_lice = NEW.id_lice) >= 2;
+    UPDATE Lice
+    SET celosno_imuniziran = 0
+    WHERE id = NEW.id_lice AND (SELECT COUNT(shifra_vakcina) FROM Vakcinacija_datum WHERE id_lice = NEW.id_lice) < 2;
+END;
+
+4. CREATE TRIGGER update_vakcinalen_status_on_insert
+AFTER INSERT ON Vakcinacija_datum
+FOR EACH ROW
+BEGIN
+    UPDATE Lice
+    SET vakcinalen_status = 'nema vakcina'
+    WHERE id = NEW.id_lice AND (SELECT COUNT(shifra_vakcina) FROM Vakcinacija_datum WHERE id_lice = NEW.id_lice) = 0;
+    
+    UPDATE Lice
+    SET vakcinalen_status = 'primena prva doza'
+    WHERE id = NEW.id_lice AND (SELECT COUNT(shifra_vakcina) FROM Vakcinacija_datum WHERE id_lice = NEW.id_lice) = 1;
+  
+    UPDATE Lice
+    SET vakcinalen_status = 'primeni dve dozi'
+    WHERE id = NEW.id_lice AND (SELECT COUNT(shifra_vakcina) FROM Vakcinacija_datum WHERE id_lice = NEW.id_lice) >= 2;
+END;
+
+5. CREATE TRIGGER integrity1
+AFTER DELETE ON Grad
+FOR EACH ROW
+BEGIN
+    UPDATE Sosedi
+    SET grad1 = NULL
+    WHERE grad1 = OLD.id_mesto;
+    
+    UPDATE Sosedi
+    SET grad2 = NULL
+    WHERE grad2 = OLD.id_mesto;
+END;
+
+CREATE TRIGGER integrity2
+AFTER DELETE ON Korisnik
+FOR EACH ROW
+BEGIN
+    DELETE FROM Poseta 
+    WHERE kor_ime = OLD.kor_ime;
+END;
+    
+6. CREATE TRIGGER updt_br_poseti
+AFTER INSERT ON Poseta
+FOR EACH ROW
+BEGIN
+    UPDATE Mesto
+    SET broj_poseti = (SELECT COUNT(DISTINCT kor_ime) FROM Poseta WHERE kor_ime = NEW.kor_ime)
+    WHERE id = NEW.id_mesto;
+END;
+
+7. CREATE TRIGGER updt_br_poseti
+AFTER INSERT ON Poseta
+FOR EACH ROW
+BEGIN
+    UPDATE Korisnik
+    SET broj_poseti = (SELECT COUNT(DISTINCT id_mesto) FROM Poseta WHERE kor_ime = NEW.kor_ime)
+    WHERE kor_ime = NEW.kor_ime;
+END;
