@@ -1,0 +1,311 @@
+1. CREATE TABLE Vraboten (
+    ID TEXT PRIMARY KEY,
+    ime TEXT NOT NULL,
+    prezime TEXT NOT NULL,
+    datum_r TEXT NOT NULL,
+    datum_v TEXT NOT NULL,
+    obrazovanie TEXT,
+    plata INTEGER,
+    
+    CONSTRAINT datumRchck CHECK (
+        datum_r < datum_v
+    )
+);
+
+CREATE TABLE Shalterski_rabotnik (
+    ID TEXT PRIMARY KEY NOT NULL,
+    FOREIGN KEY (ID) REFERENCES Vraboten(ID) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Transakcija_shalter (
+    ID TEXT PRIMARY KEY NOT NULL,
+    ID_v TEXT NOT NULL,
+    MBR_k TEXT NOT NULL,
+    MBR_k_s TEXT NOT NULL,
+    broj TEXT NOT NULL,
+    datum TEXT CHECK (datum NOT BETWEEN '2020-12-30' AND '2021-01-14'),
+    suma INTEGER,
+    tip TEXT NOT NULL CHECK (tip IN ("uplata", "isplata")),
+    FOREIGN KEY (ID_v) REFERENCES Shalterski_rabotnik(ID) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY (MBR_k) REFERENCES Klient(MBR_k) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (MBR_k_s, broj) REFERENCES Smetka(MBR_k_s, broj) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+2. CREATE TABLE Test (
+    id TEXT,
+    shifra TEXT,
+    tip TEXT,
+    datum TEXT,
+    rezultat TEXT,
+    laboratorija TEXT,
+    PRIMARY KEY(id, shifra),
+    FOREIGN KEY (id) REFERENCES Lice(id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (laboratorija != 'lab-abc' OR tip = 'seroloshki')
+);
+
+CREATE TABLE Vakcinacija(
+    id_lice TEXT,
+    id_med_lice TEXT CHECK (id_lice != id_med_lice),
+    shifra_vakcina TEXT,
+    PRIMARY KEY(id_lice, id_med_lice, shifra_vakcina),
+    FOREIGN KEY (id_lice) REFERENCES Lice (id) ON UPDATE CASCADE ON DELETE SET DEFAULT,
+    FOREIGN KEY (id_med_lice) REFERENCES Med_lice (id) ON UPDATE CASCADE ON DELETE SET DEFAULT,
+    FOREIGN KEY (shifra_vakcina) REFERENCES Vakcina (shifra) ON UPDATE CASCADE ON DELETE SET DEFAULT
+);
+
+CREATE TABLE Vakcinacija_datum(
+    id_lice TEXT,
+    id_med_lice TEXT CHECK (id_lice != id_med_lice),
+    shifra_vakcina TEXT,
+    datum TEXT,
+    PRIMARY KEY(id_lice, id_med_lice, shifra_vakcina, datum),
+    FOREIGN KEY (id_lice, id_med_lice, shifra_vakcina) REFERENCES Vakcinacija (id_lice, id_med_lice, shifra_vakcina) ON UPDATE CASCADE ON DELETE SET NULL
+);
+
+3. CREATE TABLE Bend (
+    id TEXT PRIMARY KEY,
+    ime TEXT,
+    godina_osnovanje TEXT,
+    CHECK (godina_osnovanje >= '1970')
+);
+
+CREATE TABLE Bend_zanr (
+    id_bend TEXT,
+    zanr TEXT,
+    PRIMARY KEY (id_bend, zanr),
+    FOREIGN KEY (id_bend) REFERENCES Bend(id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Festival_bend (
+    id_festival TEXT,
+    datum_od TEXT,
+    id_bend TEXT,
+    PRIMARY KEY (id_festival, datum_od, id_bend),
+    FOREIGN KEY (id_festival, datum_od) REFERENCES Festival_odrzuvanje(id, datum_od) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (id_bend) REFERENCES Bend(id) ON UPDATE CASCADE ON DELETE SET DEFAULT,
+    CHECK (id_bend != '5' AND id_festival != '2')
+);
+
+4. CREATE TABLE Korisnik (
+    kor_ime TEXT PRIMARY KEY,
+    ime TEXT,
+    prezime TEXT,
+    pol TEXT,
+    data_rag TEXT,
+    data_reg TEXT
+);
+
+CREATE TABLE Korisnik_email (
+    kor_ime TEXT,
+    email TEXT NOT NULL,
+    PRIMARY KEY(kor_ime, email),
+    FOREIGN KEY (kor_ime) REFERENCES Korisnik(kor_ime) ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (email LIKE '%.com' AND LENGTH(email) >= 10)
+);
+
+CREATE TABLE Poseta (
+    id TEXT PRIMARY KEY,
+    kor_ime TEXT,
+    id_mesto TEXT,
+    datum TEXT,
+    FOREIGN KEY (kor_ime) REFERENCES Korisnik(kor_ime) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY (id_mesto) REFERENCES Mesto(id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (datum < '2024-12-20')
+);
+
+5. CREATE TABLE Video_zapis (
+    naslov TEXT PRIMARY KEY,
+    jazik TEXT,
+    vremetraenje INTEGER,
+    datum_d DATE,
+    datum_p DATE
+);
+
+CREATE TABLE Video_zapis_zanr (
+    naslov TEXT,
+    zanr TEXT,
+    PRIMARY KEY(naslov, zanr),
+    FOREIGN KEY (naslov) REFERENCES Video_zapis(naslov) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Preporaka (
+    ID TEXT PRIMARY KEY,
+    k_ime_od TEXT,
+    k_ime_na TEXT,
+    naslov TEXT,
+    datum DATE,
+    komentar TEXT,
+    ocena INTEGER,
+    FOREIGN KEY(k_ime_od) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY(k_ime_na) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY(naslov) REFERENCES Video_zapis(naslov) ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (datum <= CURRENT_DATE),
+    CHECK (k_ime_od != k_ime_na)
+);
+
+6. CREATE TABLE Korisnik (
+    k_ime TEXT PRIMARY KEY,
+    ime TEXT,
+    prezime TEXT,
+    tip TEXT,
+    pretplata TEXT,
+    datum_reg TEXT,
+    tel_broj VARCHAR(9),
+    email TEXT
+    CHECK (datum_reg >= '2015-01-01' AND pretplata = 'pretplata 3')
+);
+
+CREATE TABLE Premium_korisnik (
+    k_ime TEXT PRIMARY KEY,
+    datum DATE,
+    procent_popust INTEGER DEFAULT 10,
+    FOREIGN KEY (k_ime) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Lista_zelbi (
+    ID TEXT PRIMARY KEY,
+    naslov TEXT,
+    k_ime TEXT,
+    ime TEXT,
+    FOREIGN KEY (naslov) REFERENCES Video_zapis(naslov) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY (k_ime, ime) REFERENCES Profil(k_ime, ime) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+7. CREATE TABLE Korisnik (
+    k_ime TEXT PRIMARY KEY,
+    ime TEXT,
+    prezime TEXT,
+    tip TEXT,
+    pretplata TEXT,
+    datum_reg TEXT,
+    tel_broj VARCHAR(12),
+    email TEXT,
+    CHECK (LENGTH(tel_broj) <= 12),
+    CHECK (datum_reg >= '2023-01-01' AND datum_reg <= '2024-12-31')
+);
+
+CREATE TABLE Premium_korisnik (
+    k_ime TEXT PRIMARY KEY,
+    datum DATE,
+    procent_popust INTEGER DEFAULT 20,
+    FOREIGN KEY (k_ime) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Profil (
+    k_ime TEXT,
+    ime TEXT,
+    datum TEXT,
+    PRIMARY KEY (k_ime, ime),
+    FOREIGN KEY (k_ime) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Video_zapis (
+    naslov TEXT PRIMARY KEY,
+    jazik TEXT DEFAULT 'English',
+    vremetraenje INTEGER,
+    datum_d TEXT,
+    datum_p TEXT,
+    CHECK (datum_d >= datum_p)
+);
+
+CREATE TABLE Video_zapis_zanr (
+    naslov TEXT,
+    zanr TEXT,
+    PRIMARY KEY (naslov, zanr),
+    FOREIGN KEY (naslov) REFERENCES Video_zapis(naslov) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Lista_zelbi (
+    naslov TEXT,
+    k_ime TEXT,
+    ime TEXT,
+    PRIMARY KEY (naslov, k_ime, ime),
+    FOREIGN KEY (naslov) REFERENCES Video_zapis(naslov) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (k_ime, ime) REFERENCES Profil(k_ime, ime) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Preporaka (
+    ID TEXT PRIMARY KEY,
+    k_ime_od TEXT,
+    k_ime_na TEXT,
+    naslov TEXT DEFAULT 'Deleted',
+    datum TEXT,
+    komentar VARCHAR(250) NOT NULL,
+    ocena INTEGER,
+    FOREIGN KEY (k_ime_od) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (k_ime_na) REFERENCES Korisnik(k_ime) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (naslov) REFERENCES Video_zapis(naslov) ON UPDATE CASCADE ON DELETE SET DEFAULT,
+    CHECK (LENGTH(komentar) <= 250),
+    CHECK (ocena >= 1 AND ocena <= 5),
+    CHECK (datum > '2022-12-07')
+);
+
+8. CREATE TABLE Vraboten (
+    ID TEXT PRIMARY KEY,
+    ime TEXT,
+    prezime TEXT,
+    datum_r TEXT,
+    datum_v TEXT,
+    obrazovanie TEXT,
+    plata INTEGER,
+    CHECK (obrazovanie IN ('PhD', 'MSc', 'High School', 'BSc')),
+    CHECK (datum_r < datum_v)
+);
+
+CREATE TABLE Shalterski_rabotnik (
+    ID TEXT PRIMARY KEY,
+    FOREIGN KEY (ID) REFERENCES Vraboten(ID) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Klient (
+    MBR_k TEXT PRIMARY KEY,
+    ime TEXT,
+    prezime TEXT,
+    adresa TEXT DEFAULT 'Ne e navedena',
+    datum TEXT
+);
+
+CREATE TABLE Smetka (
+    MBR_k TEXT,
+    broj TEXT,
+    valuta TEXT,
+    saldo INTEGER,
+    PRIMARY KEY (MBR_k, broj),
+    FOREIGN KEY (MBR_k) REFERENCES Klient(MBR_k) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE Transakcija_shalter (
+    ID TEXT PRIMARY KEY,
+    ID_v TEXT,
+    MBR_k TEXT,
+    MBR_k_s TEXT,
+    broj TEXT,
+    datum TEXT,
+    suma INTEGER,
+    tip TEXT,
+    FOREIGN KEY (ID_v) REFERENCES Shalterski_rabotnik(ID) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY (MBR_k) REFERENCES Klient(MBR_k) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (MBR_k_s, broj) REFERENCES Smetka(MBR_k, broj) ON UPDATE CASCADE ON DELETE CASCADE,
+    CHECK (tip IN ('uplata', 'isplata'))
+);
+
+CREATE TABLE Bankomat (
+    ID TEXT PRIMARY KEY,
+    lokacija TEXT,
+    datum TEXT,
+    zaliha INTEGER,
+    UNIQUE (lokacija),
+    CHECK (zaliha >= 0)
+);
+
+CREATE TABLE Transakcija_bankomat (
+    ID TEXT PRIMARY KEY,
+    MBR_k_s TEXT,
+    broj TEXT,
+    ID_b TEXT DEFAULT '-1',
+    datum TEXT,
+    suma INTEGER,
+    FOREIGN KEY (MBR_k_s, broj) REFERENCES Smetka(MBR_k, broj) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (ID_b) REFERENCES Bankomat(ID) ON UPDATE CASCADE ON DELETE SET DEFAULT,
+    CHECK (datum NOT BETWEEN '2020-12-30' AND '2021-01-14')
+);
